@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>HTML Page Creator</title>
+<style>
+body {
+font-family: monospace;
+background-color: #121212;
+color: #eeeeee;
+display: flex;
+flex-direction: column;
+align-items: center;
+#toolbar {
+display: flex;
+flex-wrap: wrap;
+gap: 8px;
+background: #181818;
+border-radius: 12px 12px 0 0;
+padding: 10px 12px 6px 12px;
+max-width: 768px;
+width: 100%;
+margin-left: auto;
+margin-right: auto;
+margin-bottom: 0.5rem;
+justify-content: center;
+align-items: center;
+box-sizing: border-box;
+position: sticky;
+top: 0;
+z-index: 100;
+}
+#toolbar button {
+background: #232323;
+color: #eee;
+border: 1px solid #333;
+border-radius: 8px;
+padding: 6px 16px;
+font-size: 1rem;
+cursor: pointer;
+transition: background 0.2s, box-shadow 0.2s;
+min-width: 38px;
+min-height: 38px;
+display: flex;
+align-items: center;
+justify-content: center;
+box-sizing: border-box;
+}
+#toolbar button:hover {
+background: #333;
+box-shadow: 0 2px 8px 0 #0002;
+}
+button:hover {
+background-color: #444;
+}
+#meta-controls {
+display: flex;
+flex-direction: column;
+width: 100%;
+max-width: 768px;
+gap: 10px;
+margin-top: 2rem;
+}
+#meta-controls input,
+#meta-controls textarea {
+background-color: #222;
+border: 1px solid #444;
+color: #eee;
+padding: 10px;
+font-size: 1rem;
+width: 748px;
+}
+#meta-controls input::placeholder,
+#meta-controls textarea::placeholder {
+color: #aaa;
+}
+#notepad {
+max-width: 768px;
+width: 100%;
+min-height: 500px;
+padding: 20px;
+background-color: #222;
+border: 1px solid #444;
+color: #eee;
+font-size: 1rem;
+line-height: 1.5;
+border-radius: 14px;
+box-sizing: border-box;
+}
+#notepad a {
+color: #7ecbff;
+text-decoration: underline;
+transition: color 0.2s;
+}
+#notepad a:hover {
+color: #b3e0ff;
+}
+.save-button {
+background-color: #2c2c2c;
+color: #e0e0e0;
+border: none;
+padding: 10px 20px;
+border-radius: 5px;
+font-family: sans-serif;
+cursor: pointer;
+transition: background-color 0.3s ease, transform 0.2s ease;
+margin-top: 20px;
+margin-bottom: 40px;
+}
+</style>
+</head>
+<body>
+<div id="opened-filename" style="width:100%;max-width:768px;margin:0 auto 6px auto;text-align:center;color:#7ecbff;font-size:0.95rem;display:none;">
+</div>
+<div id="toolbar">
+<button type="button" id="open-btn" title="Open Web Notebook file">📂</button>
+<button type="button" title="Bold (Ctrl+B)" onclick="format('bold')"><b>B</b></button>
+<button type="button" title="Italic (Ctrl+I)" onclick="format('italic')"><i>I</i></button>
+<button type="button" title="Underline (Ctrl+U)" onclick="format('underline')"><u>U</u></button>
+<button type="button" title="Heading" onclick="formatBlock('H2')">H2</button>
+<button type="button" title="Bullet List" onclick="format('insertUnorderedList')">• List</button>
+<button type="button" title="Numbered List" onclick="format('insertOrderedList')">1. List</button>
+<button type="button" title="Link" onclick="insertLink()">🔗</button>
+<button type="button" title="Image" onclick="triggerImageUpload()">🖼️</button>
+<input type="file" id="image-upload" accept="image/*" style="display:none" />
+<button type="button" title="Undo (Ctrl+Z)" onclick="format('undo')">↺</button>
+<button type="button" title="Redo (Ctrl+Y)" onclick="format('redo')">↻</button>
+<button type="button" title="Clear Formatting" onclick="clearFormatting()">🧹</button>
+</div>
+<div id="notepad" contenteditable="true" role="main"></div>
+<div id="alt-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#333; padding:20px; border-radius:10px; z-index:101; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+<h3>Edit Image Alt Text</h3>
+<p>Please provide a concise description of the image for accessibility and SEO.</p>
+<input type="text" id="alt-input" placeholder="e.g., A fluffy dog sitting on a park bench" style="width:100%; box-sizing:border-box; padding:8px; margin-top:10px;">
+<div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+<button id="save-alt-btn" style="background:#555; color:white; border:none; padding:8px 16px; cursor:pointer; border-radius:5px;">Save</button>
+<button id="cancel-alt-btn" style="background:#444; color:white; border:none; padding:8px 16px; cursor:pointer; border-radius:5px;">Cancel</button>
+</div>
+</div>
+<div id="meta-controls">
+<input type="text" id="title-input" placeholder="Enter a title for your saved note" />
+<input type="text" id="author-input" placeholder="Your name (optional)" />
+<textarea id="description-input" placeholder="Enter a short description for search engines (optional)"></textarea>
+<input type="text" id="base-url-input" placeholder="Enter your site's base URL (e.g., https://www.mysite.com)" />
+</div>
+<div id="controls">
+<button class="save-button" onclick="saveNotes()">Save</button>
+<button class="save-button" onclick="clearNotes()">Clear</button>
+</div>
+<script>
+window.addEventListener('DOMContentLoaded', function () {
+document.getElementById('open-btn').addEventListener('click', function () {
+let fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = '.html';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+fileInput.addEventListener('change', function (e) {
+const file = e.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = function (event) {
+const content = event.target.result;
+notepad.innerHTML = '';
+document.getElementById('opened-filename').style.display = 'none';
+if (content.includes('<!-- made with web notebook by mr heggelund')) {
+const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+if (bodyMatch) {
+let html = bodyMatch[1];
+const parser = new DOMParser();
+const doc = parser.parseFromString(content, 'text/html');
+const loadedNotepad = doc.getElementById('notepad');
+notepad.innerHTML = loadedNotepad ? loadedNotepad.innerHTML : '';
+const filenameSpan = document.getElementById('opened-filename');
+filenameSpan.textContent = 'Opened: ' + file.name;
+filenameSpan.style.display = 'block';
+}
+} else {
+alert('Unable to open. This was not made with Web Notebook.');
+}
+};
+reader.readAsText(file);
+document.body.removeChild(fileInput);
+});
+fileInput.click();
+});
+window.clearFormatting = function () {
+const sel = window.getSelection();
+if (!sel.isCollapsed) {
+const range = sel.getRangeAt(0);
+const tempDiv = document.createElement('div');
+tempDiv.appendChild(range.cloneContents());
+const plain = tempDiv.innerText;
+range.deleteContents();
+range.insertNode(document.createTextNode(plain));
+} else {
+notepad.innerText = notepad.innerText;
+}
+notepad.focus();
+};
+const notepad = document.getElementById('notepad');
+window.format = function (command, value = null) {
+document.execCommand(command, false, value);
+notepad.focus();
+};
+window.formatBlock = function (tag) {
+let sel = window.getSelection();
+if (sel.rangeCount > 0) {
+let container = sel.getRangeAt(0).commonAncestorContainer;
+if (container.nodeType === 3) container = container.parentNode;
+if (container && container.closest && container.closest(tag.toLowerCase())) {
+document.execCommand('formatBlock', false, 'P');
+} else {
+document.execCommand('formatBlock', false, tag);
+}
+}
+notepad.focus();
+};
+window.insertLink = function () {
+let url = prompt('Enter the URL:', 'https://');
+if (url) window.format('createLink', url);
+};
+window.triggerImageUpload = function () {
+document.getElementById('image-upload').click();
+};
+document.getElementById('image-upload').addEventListener('change', function (e) {
+const file = e.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = function (event) {
+const img = document.createElement('img');
+img.style.maxWidth = '100%';
+img.style.width = '100%';
+img.style.height = 'auto';
+img.style.display = 'block';
+img.style.margin = '8px 0';
+const tempImg = new Image();
+tempImg.onload = function () {
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+const maxWidth = 768;
+const scaleFactor = maxWidth / tempImg.width;
+canvas.width = tempImg.width > maxWidth ? maxWidth : tempImg.width;
+canvas.height = tempImg.width > maxWidth ? tempImg.height * scaleFactor : tempImg.height;
+ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+img.src = canvas.toDataURL('image/jpeg', 0.7);
+document.execCommand('insertHTML', false, img.outerHTML);
+};
+tempImg.src = event.target.result;
+};
+reader.readAsDataURL(file);
+e.target.value = '';
+});
+let selectedImage = null;
+notepad.addEventListener('click', function (e) {
+if (e.target.tagName === 'IMG') {
+selectedImage = e.target;
+const altModal = document.getElementById('alt-modal');
+const altInput = document.getElementById('alt-input');
+altInput.value = selectedImage.getAttribute('alt') || '';
+altModal.style.display = 'block';
+altInput.focus();
+}
+});
+document.getElementById('save-alt-btn').addEventListener('click', function () {
+if (selectedImage) {
+const altInput = document.getElementById('alt-input');
+const altText = altInput.value.trim();
+if (altText) {
+selectedImage.setAttribute('alt', altText);
+} else {
+selectedImage.removeAttribute('alt');
+}
+}
+document.getElementById('alt-modal').style.display = 'none';
+selectedImage = null;
+});
+document.getElementById('cancel-alt-btn').addEventListener('click', function () {
+document.getElementById('alt-modal').style.display = 'none';
+selectedImage = null;
+});
+notepad.addEventListener('keydown', function (e) {
+if (e.ctrlKey && !e.shiftKey) {
+switch (e.key.toLowerCase()) {
+case 'b': e.preventDefault(); window.format('bold'); break;
+case 'i': e.preventDefault(); window.format('italic'); break;
+case 'u': e.preventDefault(); window.format('underline'); break;
+case 'z': e.preventDefault(); window.format('undo'); break;
+case 'y': e.preventDefault(); window.format('redo'); break;
+}
+}
+});
+notepad.addEventListener('paste', function (e) {
+const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+for (const item of items) {
+if (item.type.startsWith('image/')) {
+e.preventDefault();
+const blob = item.getAsFile();
+const reader = new FileReader();
+reader.onload = function (event) {
+const img = document.createElement('img');
+img.style.maxWidth = '100%';
+img.style.width = '100%';
+img.style.height = 'auto';
+img.style.display = 'block';
+img.style.margin = '8px 0';
+const tempImg = new Image();
+tempImg.onload = function () {
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+const maxWidth = 768;
+const scaleFactor = maxWidth / tempImg.width;
+canvas.width = tempImg.width > maxWidth ? maxWidth : tempImg.width;
+canvas.height = tempImg.width > maxWidth ? tempImg.height * scaleFactor : tempImg.height;
+ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+img.src = canvas.toDataURL('image/jpeg', 0.9);
+document.execCommand('insertHTML', false, img.outerHTML);
+};
+tempImg.src = event.target.result;
+};
+reader.readAsDataURL(blob);
+}
+}
+});
+});
+function saveNotes() {
+const title = document.getElementById('title-input').value || 'My Note';
+const author = document.getElementById('author-input').value || 'Anonymous';
+const description = document.getElementById('description-input').value || 'A simple note saved as an HTML file.';
+const baseUrl = document.getElementById('base-url-input').value;
+const fileName = `${title.toLowerCase().replace(/\s/g, '-')}.html`;
+let content = notepad.innerHTML;
+const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+content = content.replace(linkRegex, '<a href="$2">$1</a>');
+let canonicalTag = '';
+if (baseUrl) {
+const canonicalUrl = new URL(fileName, baseUrl).href;
+canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
+}
+const newHtml = `
+<!-- made with web notebook by mr heggelund -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<meta name="author" content="${author}" />
+<meta name="description" content="${description}" />
+<meta name="robots" content="index, follow" />
+${canonicalTag}
+<style>
+body {
+font-family: monospace;
+background-color: #121212;
+color: #eeeeee;
+display: flex;
+flex-direction: column;
+align-items: center;
+min-height: 100vh;
+margin: 0;
+}
+h1 {
+font-size: 2rem;
+text-align: center;
+margin-bottom: 2rem;
+color: #eee;
+}
+#notepad {
+max-width: 768px;
+width: 100%;
+padding: 20px;
+background-color: #222;
+border: 1px solid #444;
+color: #eee;
+font-size: 1rem;
+line-height: 1.5;
+border-radius: 14px;
+box-sizing: border-box;
+margin: 0 auto;
+}
+#notepad img {
+max-width: 100%;
+width: 100%;
+height: auto;
+display: block;
+margin: 8px 0;
+}
+#notepad a {
+color: #7ecbff;
+text-decoration: underline;
+transition: color 0.2s;
+}
+#notepad a:hover {
+color: #b3e0ff;
+}
+</style>
+</head>
+<body role="main">
+<h1>${title}</h1>
+<div id="notepad">${content}</div>
+</body>
+</html>
+`;
+const blob = new Blob([newHtml], { type: 'text/html' });
+const link = document.createElement('a');
+link.href = URL.createObjectURL(blob);
+link.download = fileName;
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+}
+function clearNotes() {
+notepad.innerHTML = '';
+document.getElementById('title-input').value = '';
+document.getElementById('author-input').value = '';
+document.getElementById('description-input').value = '';
+}
+</script>
+</body>
+</html>
