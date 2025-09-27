@@ -149,6 +149,15 @@ margin-bottom: 40px;
 <button class="save-button" onclick="clearNotes()">Clear</button>
 </div>
 <script>
+// STATS-FETCHER-START
+fetch('https://www.chromebooker.com/stats/visitors.php', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json'
+},
+body: JSON.stringify({ page: window.location.href })
+});
+// STATS-FETCHER-END
 window.addEventListener('DOMContentLoaded', function () {
 document.getElementById('open-btn').addEventListener('click', function () {
 let fileInput = document.createElement('input');
